@@ -29,11 +29,12 @@ RUN npm install -g pnpm@10.18.0
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Install only production dependencies
-RUN pnpm install --prod --frozen-lockfile
+# Install all dependencies (vite is needed for preview)
+RUN pnpm install --frozen-lockfile
 
 EXPOSE 4173
 
 # Preview the build
-CMD ["pnpm", "preview"]
+CMD ["pnpm", "preview", "--", "--host", "0.0.0.0"]
