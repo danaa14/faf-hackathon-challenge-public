@@ -5,13 +5,16 @@ WORKDIR /app
 
 # Copy gradle files
 COPY gradle/ gradle/
-COPY gradlew build.gradle.kts settings.gradle.kts ./
+COPY build.gradle.kts settings.gradle.kts ./
 
-# Build application
-RUN ./gradlew build -x test --no-daemon
+# Copy source code
+COPY src/ src/
+
+# Build application using the Gradle binary in the base image
+RUN gradle build -x test --no-daemon
 
 # Runtime stage
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
@@ -21,4 +24,4 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 EXPOSE 8081
 
 # Run application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar"]

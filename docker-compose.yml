@@ -75,7 +75,11 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - PORT=8081
+      - JDBC_URL=jdbc:postgresql://postgres:5432/beach_db
+      - DB_USER=user
+      - DB_PASSWORD=password
+    depends_on:
+      - postgres
     networks:
       - faf-network
     healthcheck:
@@ -146,7 +150,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # PostgreSQL Database (for Hotel service)
+  # PostgreSQL Database (for Hotel and Beach services)
   postgres:
     image: postgres:16-alpine
     container_name: faf-postgres
@@ -158,6 +162,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./services/beach/db/init:/docker-entrypoint-initdb.d
     networks:
       - faf-network
     healthcheck:
