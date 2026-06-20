@@ -1,0 +1,175 @@
+version: '3.8'
+
+services:
+  # Frontend - React/Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: faf-frontend
+    ports:
+      - "5173:4173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - gateway
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # API Gateway - Go
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: faf-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    depends_on:
+      - airport
+      - hotel
+      - broadcast
+      - parrot
+      - beach
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Airport Service - Python/Flask
+  airport:
+    build:
+      context: ./services/airport
+      dockerfile: Dockerfile
+    container_name: faf-airport
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Beach Service - Java/Gradle/Ktor
+  beach:
+    build:
+      context: ./services/beach
+      dockerfile: Dockerfile
+    container_name: faf-beach
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Broadcast Service - TypeScript/Node
+  broadcast:
+    build:
+      context: ./services/broadcast
+      dockerfile: Dockerfile
+    container_name: faf-broadcast
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Hotel Service - NestJS
+  hotel:
+    build:
+      context: ./services/hotel
+      dockerfile: Dockerfile
+    container_name: faf-hotel
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://user:password@postgres:5432/hotel_db
+    depends_on:
+      - postgres
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Parrot Service - Python/FastAPI
+  parrot:
+    build:
+      context: ./services/parrot
+      dockerfile: Dockerfile
+    container_name: faf-parrot
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # PostgreSQL Database (for Hotel service)
+  postgres:
+    image: postgres:16-alpine
+    container_name: faf-postgres
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=hotel_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - faf-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d hotel_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  faf-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
